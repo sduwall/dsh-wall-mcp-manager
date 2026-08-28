@@ -256,3 +256,48 @@ test('typeText 用短文本概括 JSON Schema 类型，未知形态不编造', (
   assert.equal(exports.typeText({ anyOf: [] }), 'union')
   assert.equal(exports.typeText(undefined), 'any')
 })
+
+test('settleVerdict：fiber「运行中」但没有工具时不算连上，仍需继续等', () => {
+  const { exports } = loadBundle()
+  const verdict = exports.settleVerdict('weather', {
+    servers: [{ name: 'weather', mounted: true, state: '运行中' }],
+    groups: [],
+  })
+  // 这是本次修复的核心：mcp-client 在 failOnStartupError=false 下
+  // 握手失败也不会让 fiber 失败，所以「运行中」不能当作连接成功。
+  assert.equal(verdict.done, false)
+  assert.equal(verdict.kind, 'info')
+})
+
+test('settleVerdict：注册出工具才判定为已连接', () => {
+  const { exports } = loadBundle()
+  const verdict = exports.settleVerdict('weather', {
+    servers: [{ name: 'weather', mounted: true, state: '运行中' }],
+    groups: [{ server: 'weather', tools: [{ name: 'mcp__weather__now' }] }],
+  })
+  assert.equal(verdict.done, true)
+  assert.equal(verdict.kind, 'success')
+  assert.match(verdict.text, /已连接/)
+})
+
+test('settleVerdict：跳过原因、启动失败与失踪都立刻收敛成错误', () => {
+  const { exports } = loadBundle()
+  const skipped = exports.settleVerdict('weather', {
+    servers: [{ name: 'weather', mounted: false, state: '未挂载', skipReason: '缺少 URL' }],
+    groups: [],
+  })
+  assert.equal(skipped.done, true)
+  assert.equal(skipped.kind, 'error')
+  assert.match(skipped.text, /缺少 URL/)
+
+  const failed = exports.settleVerdict('weather', {
+    servers: [{ name: 'weather', mounted: true, state: '启动失败', error: '命令不存在' }],
+    groups: [],
+  })
+  assert.equal(failed.done, true)
+  assert.equal(failed.kind, 'error')
+
+  const missing = exports.settleVerdict('weather', { servers: [], groups: [] })
+  assert.equal(missing.done, true)
+  assert.equal(missing.kind, 'error')
+})
