@@ -1,5 +1,5 @@
 {
-  "name": "dsh-wall-mcp-manager",
+  "name": "@sduwall/dsh-wall-mcp-manager",
   "version": "0.1.0",
   "description": "DSH 插件：集中管理 MCP 服务配置，并展示每个 MCP 的工具清单、参数与返回契约",
   "license": "MIT",
@@ -34,6 +34,9 @@
   ],
   "engines": {
     "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dsh": {
     "bundle": {

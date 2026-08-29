@@ -60,7 +60,7 @@ function plain(value) {
 
 test('bundle 以插件包名注册 __ModuleLoader__ 握手', () => {
   const { handoff } = loadBundle()
-  assert.equal(handoff.id, 'dsh-wall-mcp-manager')
+  assert.equal(handoff.id, '@sduwall/dsh-wall-mcp-manager')
   assert.equal(typeof handoff.factory, 'function')
 })
 

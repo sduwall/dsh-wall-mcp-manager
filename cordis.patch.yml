@@ -1,4 +1,4 @@
-# dsh-wall-mcp-manager Bundle 配置入口
+# @sduwall/dsh-wall-mcp-manager Bundle 配置入口
 # 安装本 bundle 后，以下插件条目会合并进 profile 的插件列表。
 #
 # 本插件自己不连任何 MCP：它把 servers 里的每一条配置翻译成一个
@@ -27,6 +27,6 @@
 #             Authorization: Bearer xxx     # 凭据请求头，界面上只显示「已配置」
 - insert:
     - id: dsh-wall-mcp-manager
-      name: dsh-wall-mcp-manager
+      name: '@sduwall/dsh-wall-mcp-manager'
       config:
         servers: {}

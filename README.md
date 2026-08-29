@@ -1,4 +1,4 @@
-# dsh-wall-mcp-manager
+# @sduwall/dsh-wall-mcp-manager
 
 DSH（DeepSeek Harness）插件：集中管理 MCP 服务配置，并展示每个服务提供的工具、
 调用参数与返回契约。
@@ -41,7 +41,8 @@ MCP 工具在 DSH 里的公开名是 `mcp__<serverName>__<原始工具名>`。�
 
 ## 配置
 
-配置命名空间为 `dsh-wall-mcp-manager`，形如：
+配置命名空间为 `dsh-wall-mcp-manager`（settings 命名空间只允许小写 kebab-case，
+不带 npm scope），形如：
 
 ```yaml
 dsh-wall-mcp-manager:
@@ -178,8 +179,10 @@ modeled that way"）。若按 union 建模，凭据就会随 `describe` 原文�
 ## 安装
 
 ```bash
-dsh plugin --profile <profile> add ./dsh-wall-mcp-manager
+dsh plugin --profile <profile> add @sduwall/dsh-wall-mcp-manager
 ```
+
+本地源码目录安装亦可：`dsh plugin --profile <profile> add ./dsh-wall-mcp-manager`。
 
 出厂默认 `servers` 为空，此时插件正常加载但不挂载任何 MCP，因此安装本身不会启动任何
 子进程或对外请求。
