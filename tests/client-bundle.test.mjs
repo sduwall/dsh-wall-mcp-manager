@@ -301,3 +301,78 @@ test('settleVerdict：跳过原因、启动失败与失踪都立刻收敛成错�
   assert.equal(missing.done, true)
   assert.equal(missing.kind, 'error')
 })
+
+test('upsertNotice：同一台服务器的连续提示原地归并，不堆积', () => {
+  const { exports } = loadBundle()
+  // watchServer 每 500ms 改写一次文案，追加的话 8 秒能堆出十几条同源消息
+  let list = exports.upsertNotice([], {
+    channel: 'weather',
+    kind: 'success',
+    text: '已保存 weather，正在重连…',
+    pending: true,
+  }, 1, 1000)
+  list = exports.upsertNotice(list, {
+    channel: 'weather',
+    kind: 'info',
+    text: 'weather 正在连接…',
+    pending: true,
+  }, 2, 1500)
+  assert.equal(list.length, 1)
+  assert.equal(list[0].id, 1, '归并要保留原身份，否则销毁计时会被文案变化重置')
+  assert.equal(list[0].text, 'weather 正在连接…')
+})
+
+test('upsertNotice：pending 期间不记计时起点，拿到定论才开始计时', () => {
+  const { exports } = loadBundle()
+  let list = exports.upsertNotice([], {
+    channel: 'weather',
+    kind: 'success',
+    text: '已保存 weather，正在重连…',
+    pending: true,
+  }, 1, 1000)
+  // 这是本次修复的要点：握手可能很慢，从点保存起算会让提示在结果出来前就消失
+  assert.equal(list[0].settledAt, undefined)
+
+  list = exports.upsertNotice(list, {
+    channel: 'weather',
+    kind: 'success',
+    text: 'weather 已连接，注册 3 个工具',
+    pending: false,
+  }, 2, 9000)
+  assert.equal(list[0].settledAt, 9000)
+  assert.match(list[0].text, /注册 3 个工具/)
+})
+
+test('upsertNotice：已开始计时的提示不因后续更新而续命', () => {
+  const { exports } = loadBundle()
+  let list = exports.upsertNotice([], {
+    channel: 'weather',
+    kind: 'success',
+    text: 'weather 已连接，注册 3 个工具',
+  }, 1, 1000)
+  assert.equal(list[0].settledAt, 1000)
+
+  list = exports.upsertNotice(list, {
+    channel: 'weather',
+    kind: 'error',
+    text: 'weather 启动失败',
+  }, 2, 5000)
+  assert.equal(list[0].settledAt, 1000, '同 channel 的后续终态不应重置计时起点')
+})
+
+test('upsertNotice：不同 channel 各自排队共存', () => {
+  const { exports } = loadBundle()
+  let list = exports.upsertNotice([], { channel: 'weather', kind: 'success', text: 'A' }, 1, 1000)
+  list = exports.upsertNotice(list, { channel: 'mysql', kind: 'success', text: 'B' }, 2, 1200)
+  // 不用 deepStrictEqual：沙箱里造出的数组原型属于另一个 realm，会误判不等
+  assert.equal(list.length, 2)
+  assert.equal(list[0].channel, 'weather')
+  assert.equal(list[0].id, 1)
+  assert.equal(list[1].channel, 'mysql')
+  assert.equal(list[1].id, 2)
+})
+
+test('NOTICE_TTL_MS：提示存活 10 秒', () => {
+  const { exports } = loadBundle()
+  assert.equal(exports.NOTICE_TTL_MS, 10000)
+})
