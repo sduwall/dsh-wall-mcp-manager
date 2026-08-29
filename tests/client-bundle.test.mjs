@@ -104,7 +104,7 @@ test('apply 通过 slots.inject 注册 settings.section（等待壳声明，不�
   assert.equal(entries[0].options.name, 'settings.section')
   assert.equal(entries[0].options.id, 'dsh-wall-mcp-manager')
   assert.equal(entries[0].options.order, 270)
-  assert.equal(entries[0].options.label(), 'MCP 服务器')
+  assert.equal(entries[0].options.label(), 'MCP 服务')
   assert.equal(entries[0].component, exports.McpManagerSection)
 })
 
@@ -182,13 +182,13 @@ test('draftToOps 的 stdio 草稿只写 stdio 字段，新建时落 enabled', ()
   )
   assert.equal(verdict.ok, true)
   const byField = new Map(verdict.ops.map((op) => [op.path.join('.'), op]))
-  assert.equal(byField.get('servers.fs.enabled').value, true, '新建必须落 enabled，否则整台服务器不成形')
+  assert.equal(byField.get('servers.fs.enabled').value, true, '新建必须落 enabled，否则整个服务不成形')
   assert.equal(byField.get('servers.fs.command').value, 'npx')
   assert.deepEqual(plain(byField.get('servers.fs.args').value), ['-y', 'server-filesystem'])
   assert.deepEqual(plain(byField.get('servers.fs.env').value), { LANG: 'zh_CN' })
   assert.equal(byField.get('servers.fs.cwd').value, 'D:/ws')
   assert.equal(byField.get('servers.fs.toolCallTimeoutMs').value, 15000, '超时必须写成数字，字符串会被 Schema 拒绝')
-  // 别分支字段一律不写，避免把 stdio 服务器写成半个 http 服务器
+  // 别分支字段一律不写，避免把 stdio 服务写成半个 http 服务
   assert.equal(byField.has('servers.fs.url'), false)
   assert.equal(byField.has('servers.fs.headers'), false)
 })
@@ -302,7 +302,7 @@ test('settleVerdict：跳过原因、启动失败与失踪都立刻收敛成错�
   assert.equal(missing.kind, 'error')
 })
 
-test('upsertNotice：同一台服务器的连续提示原地归并，不堆积', () => {
+test('upsertNotice：同一个服务的连续提示原地归并，不堆积', () => {
   const { exports } = loadBundle()
   // watchServer 每 500ms 改写一次文案，追加的话 8 秒能堆出十几条同源消息
   let list = exports.upsertNotice([], {

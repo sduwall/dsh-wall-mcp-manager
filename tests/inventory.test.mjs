@@ -3,7 +3,7 @@
  *
  * 这一层的每条规则都对应一个真实故障：
  * 联合分支多带字段会被 mcp-client 拒绝、指纹算错会让每次保存都重连 MCP、
- * 前缀归组错会把工具挂到别的服务器名下。
+ * 前缀归组错会把工具挂到别的服务名下。
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -197,10 +197,10 @@ test('groupTools 把别处挂载的 MCP 工具单列为 orphans', () => {
     { name: 'mcp__other__ping', parameters: {}, output: { schema: {} } },
   ])
   const { groups, orphans } = groupTools(runtime, ['fs'])
-  assert.deepEqual(groups, [{ server: 'fs', tools: [] }], '已配置但未注册工具的服务器仍要出现在清单里')
+  assert.deepEqual(groups, [{ server: 'fs', tools: [] }], '已配置但未注册工具的服务仍要出现在清单里')
   assert.equal(orphans.length, 1)
   assert.equal(orphans[0].server, undefined)
-  assert.equal(orphans[0].rawName, undefined, '不属于已配置服务器时不猜 rawName')
+  assert.equal(orphans[0].rawName, undefined, '不属于已配置服务时不猜 rawName')
 })
 
 test('groupTools 容忍缺失的 tools 服务', () => {

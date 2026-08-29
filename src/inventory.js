@@ -1,13 +1,13 @@
 /**
- * 纯函数层：把「用户配置的 MCP 服务器清单」翻译成 mcp-client 实例配置，
- * 并把 `ctx.tools` 里的工具按服务器归组、拆出参数与返回 schema。
+ * 纯函数层：把「用户配置的 MCP 服务清单」翻译成 mcp-client 实例配置，
+ * 并把 `ctx.tools` 里的工具按服务归组、拆出参数与返回 schema。
  *
  * 这一层刻意不碰 cordis / http，任何一条规则都能被单元测试直接钉住。
  *
  * @module
  */
 
-/** 运行时挂载的 MCP 客户端包名（一个实例 = 一个 MCP 服务器） */
+/** 运行时挂载的 MCP 客户端包名（一个实例 = 一个 MCP 服务） */
 export const MCP_PACKAGE = '@deepseek-ai/dsh-mcp-client'
 
 /**
@@ -58,13 +58,13 @@ function stringList(value) {
 }
 
 /**
- * 校验单个服务器配置是否可以挂载。
+ * 校验单个服务配置是否可以挂载。
  *
- * 返回 `{ ok: false, reason }` 而不是抛错：配置界面里「填一半的服务器」是常态，
- * 半成品不该让整份配置或其他服务器跟着失效。
+ * 返回 `{ ok: false, reason }` 而不是抛错：配置界面里「填一半的服务」是常态，
+ * 半成品不该让整份配置或其他服务跟着失效。
  *
  * @param {string} serverName 配置里的键名，同时作为 mcp-client 的 serverName
- * @param {object} server 单个服务器配置
+ * @param {object} server 单个服务配置
  * @returns {{ ok: true } | { ok: false, reason: string }}
  */
 export function validateServer(serverName, server) {
@@ -89,7 +89,7 @@ export function validateServer(serverName, server) {
 }
 
 /**
- * 把一条服务器配置翻译成 mcp-client 的实例配置。
+ * 把一条服务配置翻译成 mcp-client 的实例配置。
  *
  * 只输出对应传输分支该有的字段：mcp-client 的 Config 是
  * `z.union([stdio, streamable-http])`，多带一个别分支的字段会直接被 Schema 拒绝。
@@ -98,8 +98,8 @@ export function validateServer(serverName, server) {
  * schema 里被标成 `role('secret')`，所以永远不会随 `/describe` 出网，但对
  * mcp-client 来说和普通环境变量、普通请求头没有区别。同名键以凭据为准。
  *
- * @param {string} serverName 服务器名（作为工具名命名空间）
- * @param {object} server 单个服务器配置
+ * @param {string} serverName 服务名（作为工具名命名空间）
+ * @param {object} server 单个服务配置
  * @returns {object} mcp-client 实例配置
  */
 export function toMcpConfig(serverName, server) {
@@ -133,10 +133,10 @@ export function toMcpConfig(serverName, server) {
 /**
  * 计算「应该挂载哪些 mcp-client 实例」。
  *
- * @param {Record<string, object>} servers 配置中的服务器字典（键为 serverName）
+ * @param {Record<string, object>} servers 配置中的服务字典（键为 serverName）
  * @returns {{ desired: Map<string, { config: object, key: string }>, skipped: Array<{ name: string, reason: string }> }}
  *   `desired` 是待挂载集合，`key` 是配置指纹（用于判断该 update 还是保持不动）；
- *   `skipped` 说明每个被跳过的服务器为什么没挂（停用 / 配置不完整）。
+ *   `skipped` 说明每个被跳过的服务为什么没挂（停用 / 配置不完整）。
  */
 export function planServers(servers) {
   const desired = new Map()
@@ -187,7 +187,7 @@ export function unwrapOutputSchema(schema) {
 }
 
 /**
- * 从工具注册表里把 MCP 工具按服务器归组。
+ * 从工具注册表里把 MCP 工具按服务归组。
  *
  * 为什么用前缀匹配而不是反解名字：`publicToolName` 在需要字符替换或截断时会
  * 追加哈希，其源码明确「the public name is never parsed to recover it」。
@@ -195,9 +195,9 @@ export function unwrapOutputSchema(schema) {
  * 所以 `mcp__<serverName>__` 这段前缀是可靠的，只有 rawName 可能被规范化。
  *
  * @param {{ schemas(): Array<object>, get(name: string): object | undefined }} runtime `ctx.tools`
- * @param {string[]} serverNames 已配置的服务器名（决定归组顺序）
+ * @param {string[]} serverNames 已配置的服务名（决定归组顺序）
  * @returns {{ groups: Array<{ server: string, tools: Array<object> }>, orphans: Array<object> }}
- *   `orphans` 是带 `mcp__` 前缀但不属于任何已配置服务器的工具
+ *   `orphans` 是带 `mcp__` 前缀但不属于任何已配置服务的工具
  *   （例如组合层 cordis.yml 里另外挂的 mcp-client 实例）。
  */
 export function groupTools(runtime, serverNames) {
@@ -234,7 +234,7 @@ export function groupTools(runtime, serverNames) {
  *
  * @param {object} runtime `ctx.tools`
  * @param {object} schema 来自 `schemas()` 的单条工具 schema
- * @param {string|undefined} serverName 归属服务器（用于推断 rawName）
+ * @param {string|undefined} serverName 归属服务（用于推断 rawName）
  * @returns {object} 工具视图
  */
 export function describeTool(runtime, schema, serverName) {

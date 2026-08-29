@@ -1,6 +1,6 @@
 # dsh-wall-mcp-manager
 
-DSH（DeepSeek Harness）插件：集中管理 MCP 服务器配置，并展示每台服务器提供的工具、
+DSH（DeepSeek Harness）插件：集中管理 MCP 服务配置，并展示每个服务提供的工具、
 调用参数与返回契约。
 
 - **插件类型**：Cordis Bundle（npm 包）
@@ -16,12 +16,12 @@ DSH（DeepSeek Harness）插件：集中管理 MCP 服务器配置，并展示�
 
 本插件**自己不实现 MCP 协议**，只做两件事：
 
-1. **对账**：把配置里的服务器清单收敛成一组 `@deepseek-ai/dsh-mcp-client` 实例
-   （一个实例 = 一台 MCP 服务器）——新增则挂载、改了则更新、删了则卸载、没变则一动不动；
+1. **对账**：把配置里的服务清单收敛成一组 `@deepseek-ai/dsh-mcp-client` 实例
+   （一个实例 = 一个 MCP 服务）——新增则挂载、改了则更新、删了则卸载、没变则一动不动；
 2. **呈现**：通过回环配置桥把「配置 + 挂载状态 + 工具契约」交给设置界面。
 
-为什么是对账而不是「全拆重建」：重建会让所有 MCP 重连一次。用户改一台服务器的
-备注文字，不该把另外五台的 stdio 子进程全杀掉重启。判定依据是**实例配置指纹**
+为什么是对账而不是「全拆重建」：重建会让所有 MCP 重连一次。用户改一个服务的
+备注文字，不该把另外五个的 stdio 子进程全杀掉重启。判定依据是**实例配置指纹**
 （`toMcpConfig` 的输出序列化），因此只改 `description` 这类非 mcp-client 字段不触发重连。
 
 ## 工具命名与 serverName
@@ -32,7 +32,7 @@ MCP 工具在 DSH 里的公开名是 `mcp__<serverName>__<原始工具名>`。�
   （`serverName` 在所有活动 mcp-client 实例之间必须唯一，重复会在挂载阶段抛错）；
 - `serverName` 受 `[A-Za-z0-9_-]{1,32}` 约束（与 mcp-client 内部常量一致），
   非法名称在插件侧就被拦下并在界面显示原因，而不是只留一行日志；
-- **改名等于换一台服务器**：工具名会整体变化，模型侧的引用也随之改变。
+- **改名等于换一个服务**：工具名会整体变化，模型侧的引用也随之改变。
   对账时先卸载不再需要的 `serverName`、再挂载新的，避免改名瞬间在唯一性检查上撞车。
 
 界面按 `mcp__<serverName>__` **前缀**归组工具（最长前缀优先，正确区分 `fs` 与 `fs_ro`），
@@ -73,7 +73,7 @@ dsh-wall-mcp-manager:
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| `enabled` | `true` | 停用则不挂载该服务器（保留配置） |
+| `enabled` | `true` | 停用则不挂载该服务（保留配置） |
 | `transport` | `stdio` | `stdio`（本地子进程）或 `streamable-http`（远程 HTTP） |
 | `description` | `''` | 备注，仅本界面展示，不传给 mcp-client |
 | `command` | `''` | **stdio 必填**：启动命令 |
@@ -106,23 +106,23 @@ modeled that way"）。若按 union 建模，凭据就会随 `describe` 原文�
 因此这里用**扁平 object + `transport` 判别字段**，挂载时再由 `toMcpConfig` 按分支重新
 组装出合法的实例配置——只输出该分支该有的字段，多带一个别分支字段会被 union 直接拒绝。
 
-### 半成品不影响其他服务器
+### 半成品不影响其他服务
 
-「填了一半的服务器」在配置界面里是常态。校验失败（缺 `command`、名称非法、
-`transport` 不支持）只让该台被跳过并在界面标出原因，不会让整份配置或其他服务器失效。
-单台挂载失败（命令不存在、远端不可达）同样只记为该台的失败，绝不外溢成插件整体卸载。
+「填了一半的服务」在配置界面里是常态。校验失败（缺 `command`、名称非法、
+`transport` 不支持）只让该项被跳过并在界面标出原因，不会让整份配置或其他服务失效。
+单个服务挂载失败（命令不存在、远端不可达）同样只记为该项的失败，绝不外溢成插件整体卸载。
 
 ## 设置界面
 
-插件注册了 `settings.section` 一级页面「MCP 服务器」。界面由浏览器端 bundle
+插件注册了 `settings.section` 一级页面「MCP 服务」。界面由浏览器端 bundle
 （`lib/client.js`）渲染，通过宿主自建的回环配置桥读写：
 
 | 路由（均为 POST） | 用途 |
 | --- | --- |
 | `/api/dsh-wall-mcp-manager/describe` | 脱敏配置视图（含 `revision` 与 schema） |
 | `/api/dsh-wall-mcp-manager/mutate` | 按 `{ ops, expectedRevision }` 精确改字段 |
-| `/api/dsh-wall-mcp-manager/servers` | 每台服务器的挂载状态（fiber 相位 / 跳过原因 / 失败原因） |
-| `/api/dsh-wall-mcp-manager/tools` | 按服务器归组的工具清单，含参数与拆包后的返回 schema |
+| `/api/dsh-wall-mcp-manager/servers` | 每个服务的挂载状态（fiber 相位 / 跳过原因 / 失败原因） |
+| `/api/dsh-wall-mcp-manager/tools` | 按服务归组的工具清单，含参数与拆包后的返回 schema |
 
 - **只接受本机回环来源**（`127.0.0.1` / `::1` / `::ffff:127.*`）。该桥能写入 MCP 的
   启动命令与凭据，权限等价于「在宿主上执行任意进程」；DSH 的 webserver 允许绑定
@@ -154,7 +154,7 @@ modeled that way"）。若按 union 建模，凭据就会随 `describe` 原文�
 
 ## 热生效
 
-保存配置后立即对账，无需重启 DSH：新增即时连接、修改重连该服务器、删除断开连接。
+保存配置后立即对账，无需重启 DSH：新增即时连接、修改重连该服务、删除断开连接。
 连续保存被串行化处理，避免 create / remove 交叉。
 
 注意**配置与运行时的时序不同**：配置是保存即定，而 MCP 连接与工具注册要等子进程或
@@ -163,17 +163,17 @@ modeled that way"）。若按 union 建模，凭据就会随 `describe` 原文�
 
 提示到达终态后 10 秒自动消失，**计时从拿到连接结果那一刻起算**，不是从点保存起算——
 握手可能耗时数秒，从点击起算会让提示在结果出来之前就消失。进行中的提示不计时也不
-可关闭，否则这次连接的结论就再也看不到了。多条提示按「服务器 / 操作」归并排队共存：
-同一台服务器的轮询文案原地改写（不会 8 秒堆出十几条），不同来源的提示各占一行。
+可关闭，否则这次连接的结论就再也看不到了。多条提示按「服务 / 操作」归并排队共存：
+同一个服务的轮询文案原地改写（不会 8 秒堆出十几条），不同来源的提示各占一行。
 
 状态徽章分两级，因为 **fiber 的「运行中」不等于 MCP 已连上**：mcp-client 在
 `failOnStartupError: false`（本插件默认）下，握手失败也不会让实例失败，而是在后台按
-指数退避重连。所以徽章只在**该服务器注册出工具**时才显示「已连接」，实例活着但握手
+指数退避重连。所以徽章只在**该服务注册出工具**时才显示「已连接」，实例活着但握手
 未成时显示「未连接」。此时反复点「刷新状态」会一直得到同样的结果——那不是刷新失效，
 而是连接确实没建立，失败原因见 DSH 日志。
 
 配置分三层解析（后者覆盖前者）：Schema 默认值 → cordis 组合层（`cordis.patch.yml`）→
-`settings.yaml` 用户层。组合层适合部署级默认值，用户层适合随时可能变动的服务器与凭据。
+`settings.yaml` 用户层。组合层适合部署级默认值，用户层适合随时可能变动的服务与凭据。
 
 ## 安装
 
@@ -220,7 +220,7 @@ node tests/inventory.test.mjs && node tests/mcp-bridge.test.mjs \
 
 - **纯函数测试**（`inventory.test.mjs`）：配置校验、mcp-client 配置翻译（联合分支多带
   字段会被拒绝）、挂载计划与指纹（算错会让每次保存都重连 MCP）、返回 schema 拆包、
-  工具前缀归组（错了会把工具挂到别的服务器名下）。
+  工具前缀归组（错了会把工具挂到别的服务名下）。
 - **配置桥测试**（`mcp-bridge.test.mjs`）：凭据原文与键名都不出网、逐字段写入不抹掉
   界面从未见过的凭据、回环来源限制、多级 path、修订冲突拒绝、只读存储与 Schema 约束
   在桥上同样生效、settings 缺失时只读路由照常工作。用真实 settings 实现 + 内存路由表
@@ -237,9 +237,9 @@ dsh-wall-mcp-manager/
 ├── package.json          # 插件包声明（dsh.bundle.patch → cordis.patch.yml，dsh.client → 浏览器 bundle）
 ├── cordis.patch.yml      # Bundle 配置入口（插件条目与默认配置，出厂 servers 为空）
 ├── lib/
-│   └── client.js         # 浏览器端 bundle：设置界面「MCP 服务器」页面（settings.section）
+│   └── client.js         # 浏览器端 bundle：设置界面「MCP 服务」页面（settings.section）
 ├── src/
-│   ├── index.js          # Cordis 插件入口：Config Schema + 服务器清单对账（挂载/更新/卸载）
+│   ├── index.js          # Cordis 插件入口：Config Schema + 服务清单对账（挂载/更新/卸载）
 │   ├── inventory.js      # 纯函数层：配置校验与翻译、挂载计划与指纹、返回 schema 拆包、工具归组
 │   └── mcp-bridge.js     # 回环配置桥路由：describe / mutate / servers / tools
 └── tests/                # 纯函数测试 + 配置桥测试（真实 settings）+ 客户端 bundle 契约测试

@@ -175,7 +175,7 @@ test('describe 返回脱敏视图：凭据原文与键名都不出网', async ()
     assert.equal(body.includes('GITHUB_TOKEN'), false, '整字典标 secret 时连键名都不该出网')
     assert.equal(json.value.value.servers.fs.command, 'npx', '非凭据字段应正常返回')
     assert.deepEqual(json.value.value.servers.fs.env, { LANG: 'zh_CN' })
-    // secrets 只描述「这台服务器有没有配凭据」
+    // secrets 只描述「这个服务有没有配凭据」
     const slot = json.value.secrets.find((item) => item.path.join('.') === 'servers.fs.secretEnv')
     assert.equal(slot.set, true)
     const headerSlot = json.value.secrets.find(
@@ -189,7 +189,7 @@ test('describe 返回脱敏视图：凭据原文与键名都不出网', async ()
   }
 })
 
-test('mutate 支持 servers.<name>.<field> 多级 path，新增服务器立即生效', async () => {
+test('mutate 支持 servers.<name>.<field> 多级 path，新增服务立即生效', async () => {
   const { root, call } = await startHarness()
   try {
     const before = await call('/describe')
@@ -258,7 +258,7 @@ test('逐字段写入不会抹掉界面从未见过的凭据', async () => {
   }
 })
 
-test('unset 可以删除整台服务器，也可以只清除凭据', async () => {
+test('unset 可以删除整个服务，也可以只清除凭据', async () => {
   const { root, call } = await startHarness({
     doc: {
       [BRIDGE_NAMESPACE]: {
@@ -287,7 +287,7 @@ test('unset 可以删除整台服务器，也可以只清除凭据', async () =>
     })
     assert.equal(remove.json.ok, true)
     assert.equal(remove.json.value.value.servers.weather, undefined)
-    assert.notEqual(remove.json.value.value.servers.fs, undefined, '删一台不该影响另一台')
+    assert.notEqual(remove.json.value.value.servers.fs, undefined, '删一个不该影响另一个')
   } finally {
     await root.fiber.dispose()
   }

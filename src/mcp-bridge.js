@@ -20,7 +20,7 @@ export const BRIDGE_NAMESPACE = 'dsh-wall-mcp-manager'
 /**
  * 单次请求体上限。
  *
- * 比 dsh-client-info 的 64KB 放宽到 256KB：一份服务器清单要装 args 数组、
+ * 比 dsh-client-info 的 64KB 放宽到 256KB：一份服务清单要装 args 数组、
  * env 字典与请求头，条目多时体积远大于单个扁平配置段。
  */
 const MAX_BODY_BYTES = 256 * 1024
@@ -96,7 +96,7 @@ export function toWireView(descriptor) {
  * 校验一批 mutate 操作。
  *
  * 与 dsh-client-info 的桥不同，这里**允许多级 path**：本插件的配置是
- * `servers.<name>.<field>` 的两三级结构，逐台服务器改字段就必须多级寻址。
+ * `servers.<name>.<field>` 的两三级结构，逐个服务改字段就必须多级寻址。
  * 宿主侧 `applyPathOp` 本身完整支持多级 path（中间层不存在时会按需创建），
  * 所以放宽这一层不会带来越界写入——`settings.mutate` 只作用于本命名空间。
  *
@@ -125,8 +125,8 @@ export function validateOps(ops) {
  * 路由（均为 POST，读操作也走 POST 以统一处理，且避免任何 GET 缓存歧义）：
  * - `POST <prefix>/describe` → 当前命名空间的脱敏配置视图（含 revision 与 schema）
  * - `POST <prefix>/mutate`   → 按 `{ ops, expectedRevision }` 精确改字段
- * - `POST <prefix>/servers`  → 每台服务器的挂载状态（fiber 相位 / 跳过原因 / 失败原因）
- * - `POST <prefix>/tools`    → 按服务器归组的工具清单，含参数与拆包后的返回 schema
+ * - `POST <prefix>/servers`  → 每个服务的挂载状态（fiber 相位 / 跳过原因 / 失败原因）
+ * - `POST <prefix>/tools`    → 按服务归组的工具清单，含参数与拆包后的返回 schema
  *
  * 用 `mutate`（而非整体替换）是刻意的：浏览器持有的视图是**脱敏的**，
  * 整体替换会把它从未见过的 `secretEnv` / `secretHeaders` 一并抹掉。
@@ -136,8 +136,8 @@ export function validateOps(ops) {
  *
  * @param {import('@deepseek-ai/cordis').Context} ctx 插件上下文（需 webServer）
  * @param {object} hooks 宿主侧数据源
- * @param {() => object} hooks.describeServers 返回各服务器挂载状态
- * @param {() => object} hooks.describeTools 返回按服务器归组的工具清单
+ * @param {() => object} hooks.describeServers 返回各服务挂载状态
+ * @param {() => object} hooks.describeTools 返回按服务归组的工具清单
  * @returns {() => void} 反注册函数
  */
 export function registerBridgeRoutes(ctx, hooks = {}) {
