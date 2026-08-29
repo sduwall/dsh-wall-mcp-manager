@@ -247,3 +247,22 @@ dsh-wall-mcp-manager/
 │   └── mcp-bridge.js     # 回环配置桥路由：describe / mutate / servers / tools
 └── tests/                # 纯函数测试 + 配置桥测试（真实 settings）+ 客户端 bundle 契约测试
 ```
+
+## 发布
+
+本包以 scoped 包 `@sduwall/dsh-wall-mcp-manager` 发布到 npm 公共 registry。
+
+```bash
+npm config set registry https://registry.npmjs.org   # 镜像 registry 不能发布
+npm login                                            # 需具备 @sduwall scope 的发布权限
+npm pack --dry-run                                   # 核对 tarball 文件清单
+npm publish                                          # publishConfig.access=public，scoped 包才不会被当作私有包
+```
+
+`prepublishOnly` 会在发布前自动跑一遍 `npm test`，测试不通过则中止发布。
+
+注意包内不带 scope 的三处标识是有意为之，改动会破坏兼容：settings 命名空间
+`dsh-wall-mcp-manager`（只允许小写 kebab-case）、`cordis.patch.yml` 的 `id`、
+配置桥路由前缀 `/api/dsh-wall-mcp-manager`。而
+`cordis.patch.yml` 的 `name` 与 `lib/client.js` 的 `__ModuleLoader__.load({ id })`
+必须与包名逐字符一致（含 scope），否则 patch 被静默跳过、bundle 注册失败。
