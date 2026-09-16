@@ -12,6 +12,19 @@ DSH（DeepSeek Harness）插件：集中管理 MCP 服务配置，并展示每�
 - **可选服务**：`settings`（运行时改配置并热生效；缺失时按组合层配置工作）、
   `webServer`（设置界面的配置桥；缺失时仍照常挂载 MCP，只是没有界面）
 
+## DSH 版本兼容
+
+本插件 **0.2.0+ 仅支持 DSH ≥ 0.1.2-alpha**（对应 `@deepseek-ai/dsh-settings` ≥ `0.1.2-alpha.2`）。
+
+- **旧版 DSH（≤ 0.1.1-rc.2）不兼容**：该版本线移除/重构了设置面板 API，旧插件一加载即报
+  `does not provide an export named 'installSettingsSection'`。
+- **已验证的版本范围**：`0.1.2-alpha.2` 至 `0.1.6-alpha.1` 共 11 个已发布版本，设置 API 表面一致
+  （均为注入的 `ctx.settings.installSection(owner, ns, schema, entry, hooks)`）。
+- **校验方式**：发布前运行 `node scripts/verify-dsh-versions.mjs` 逐个核对已发布版本接口，
+  任一不符即非零退出。若 DSH 未来再改接口，脚本先报警，届时再升插件大版本。
+
+如需在旧版 DSH 上运行，请锁定 `@sduwall/dsh-wall-mcp-manager@0.1.0`。
+
 ## 它做什么
 
 本插件**自己不实现 MCP 协议**，只做两件事：

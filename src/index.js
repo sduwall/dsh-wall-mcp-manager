@@ -1,5 +1,4 @@
 import Schema from '@deepseek-ai/schemastery'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { registerBridgeRoutes } from './mcp-bridge.js'
 import {
   MCP_PACKAGE,
@@ -19,8 +18,10 @@ export const name = 'dsh-wall-mcp-manager'
  *   自身就 `inject: ['tools']`——宿主没有 tools 时实例根本起不来，
  *   把它列成硬依赖比运行到一半再失败更诚实。
  *
- * `settings` 与 `webServer` 都是**可选**依赖：前者由 `installSettingsSection`
- * 内部按需接入，后者只影响界面能否读写配置，headless 宿主里插件照常挂载 MCP。
+ * `settings` 与 `webServer` 都是**可选**依赖：前者经由注入的 `ctx.settings`
+ * 服务（`SettingsProvider`）按需接入设置面板——仅 DSH ≥ 0.1.2-alpha 提供该服务，
+ * 旧版 DSH 因已移除 `installSettingsSection` 而不兼容本插件；后者只影响界面能否
+ * 读写配置，headless 宿主里插件照常挂载 MCP。
  */
 export const inject = ['loader', 'tools']
 
@@ -31,8 +32,10 @@ export const inject = ['loader', 'tools']
  */
 export { MCP_PACKAGE }
 
-/** 用户可配置的 settings 命名空间（对应 settings.yaml 中的 `dsh-wall-mcp-manager:` 段） */
-const SETTINGS_NAMESPACE = settingsNamespace('dsh-wall-mcp-manager')
+/** 用户可配置的 settings 命名空间（对应 settings.yaml 中的 `dsh-wall-mcp-manager:` 段）。
+ * 自 DSH 0.1.2-alpha 起 dsh-settings 移除了顶层 settingsNamespace，命名空间改为
+ * 直接传字面量小写连字符字符串（须匹配 /^[a-z][a-z0-9-]*$/）。 */
+const SETTINGS_NAMESPACE = 'dsh-wall-mcp-manager'
 
 /**
  * 单个 MCP 服务的配置。
@@ -198,6 +201,8 @@ export async function apply(ctx, config) {
       .catch((error) => {
         ctx.logger.warn(`[dsh-wall-mcp-manager] 应用配置变更失败：${errorText(error)}`)
       })
+    // 返回 queue，调用方（apply 里的首轮对账）可 await，确保回调已串行进入队列
+    return queue
   }
 
   /**
@@ -230,12 +235,16 @@ export async function apply(ctx, config) {
     return groupTools(ctx.tools, Object.keys(source().servers ?? {}))
   }
 
-  // 接入 settings：以组合层配置为 base，界面/文件里的覆盖生效并热更新
-  installSettingsSection(ctx, SETTINGS_NAMESPACE, Config, config, {
-    setSource: (current) => {
-      source = current
-    },
-    onChange,
+  // 接入 settings：等 settings 服务就绪（DSH ≥ 0.1.2-alpha 提供）后再注册面板，
+  // 缺失时（headless / CLI）这段不执行，下面的 onChange() 兜底对账一次。
+  // 新接口用注入的 settings 服务的 installSection（旧顶层 installSettingsSection 已移除）。
+  ctx.inject(['settings'], (sctx) => {
+    sctx.settings.installSection(sctx, SETTINGS_NAMESPACE, Config, config, {
+      setSource: (current) => {
+        source = current
+      },
+      onChange,
+    })
   })
 
   // 桥路由：webServer 缺失时（headless / CLI）不注册，MCP 挂载不受影响
@@ -243,8 +252,10 @@ export async function apply(ctx, config) {
     wctx.effect(() => registerBridgeRoutes(wctx, { describeServers, describeTools }))
   })
 
-  // 没有 settings 服务时 installSettingsSection 不会触发 onChange，这里兜底对账一次
-  onChange()
+  // 没有 settings 服务时上面不会触发，这里兜底对账一次。
+  // 用 await 等首轮对账完成：保证 apply 返回时 MCP 已挂载，
+  // 避免「加载完成 → 首次异步对账」之间出现挂载空窗。
+  await onChange()
 
   // 卸载回调：排在队列尾部，保证不与正在进行的对账交叉。
   // 逆序拆除，让后挂的实例先走，尽量贴近挂载顺序的反向。
