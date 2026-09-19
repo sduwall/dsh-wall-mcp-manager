@@ -14,6 +14,9 @@
 const PKG = '@deepseek-ai/dsh-settings'
 // 本插件支持的最低 dsh-settings 版本：移除 installSettingsSection 的首个已发布版本。
 const FLOOR = '0.1.2-alpha.2'
+// 必须显式覆盖的版本：即便 registry 列表将来变化，也强制核对它们；缺一个即非零退出。
+// 0.1.5-rc.2 = latest 稳定线最新；0.1.6-alpha.2 = alpha 线最新。两个版本均已在本机经 npx 实机验证可加载本插件。
+const REQUIRED_VERSIONS = ['0.1.5-rc.2', '0.1.6-alpha.2']
 
 // ---- 最小 semver 比较，仅覆盖本场景（0.1.x 预发布） ----
 function parse(v) {
@@ -63,13 +66,28 @@ async function main() {
     process.exit(2)
   }
 
-  const targets = versions.filter((v) => gte(v, FLOOR)).sort((a, b) => cmp(parse(a), parse(b)))
+  const published = new Set(versions)
+  const missingRequired = REQUIRED_VERSIONS.filter((v) => !published.has(v))
+  if (missingRequired.length > 0) {
+    console.error(
+      `✗ 以下必须核对的版本在 registry 中不存在（可能未发布或已下架）：${missingRequired.join(', ')}`,
+    )
+    process.exit(1)
+  }
+
+  const requiredSet = new Set(REQUIRED_VERSIONS)
+  const targets = versions
+    .filter((v) => gte(v, FLOOR) || requiredSet.has(v))
+    .sort((a, b) => cmp(parse(a), parse(b)))
   if (targets.length === 0) {
     console.error(`未找到 >= ${FLOOR} 的已发布版本。`)
     process.exit(2)
   }
 
-  console.log(`核对 ${PKG} 在 >= ${FLOOR} 的全部 ${targets.length} 个已发布版本上的设置 API 表面\n`)
+  const requiredHit = REQUIRED_VERSIONS.filter((v) => targets.includes(v))
+  console.log(
+    `核对 ${PKG} 在 >= ${FLOOR} 的全部 ${targets.length} 个已发布版本（含必检 ${requiredHit.length} 个：${requiredHit.join(', ')}）上的设置 API 表面\n`,
+  )
 
   const rows = []
   let failures = 0
@@ -124,6 +142,7 @@ async function main() {
   console.log(
     `\n✓ 全部 ${rows.length} 个已发布版本一致：旧导出已移除、installSection(owner, ns, schema, entry, hooks) 与 register(ns, schema, options) 签名稳定。`,
   )
+  console.log(`必检版本 ${REQUIRED_VERSIONS.join(', ')} 已覆盖且一致。`)
   console.log(`本插件可安全声明 peerDependencies 支持 ${PKG} >= ${FLOOR}。`)
 }
 

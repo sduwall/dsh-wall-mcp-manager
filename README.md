@@ -18,10 +18,16 @@ DSH（DeepSeek Harness）插件：集中管理 MCP 服务配置，并展示每�
 
 - **旧版 DSH（≤ 0.1.1-rc.2）不兼容**：该版本线移除/重构了设置面板 API，旧插件一加载即报
   `does not provide an export named 'installSettingsSection'`。
-- **已验证的版本范围**：`0.1.2-alpha.2` 至 `0.1.6-alpha.1` 共 11 个已发布版本，设置 API 表面一致
+- **已验证的版本范围**：`0.1.2-alpha.2` 起全部已发布版本（含 0.1.5-rc.2、0.1.6-alpha.2 等）设置 API 表面一致
   （均为注入的 `ctx.settings.installSection(owner, ns, schema, entry, hooks)`）。
+- **实机验证通过的版本**（`package.json` 的 `dsh.compatibility.verifiedDshVersions`，以下均为真机加载验证：npx 实装 DSH、实际启动并确认 web 可访问、本插件成功加载且能正常拉起/管理 MCP server）：
+  - `0.1.2-alpha.2`（兼容下限；0.1.2-alpha.3/.4/.5 与其 API 完全一致，已通过静态核对覆盖）
+  - `0.1.5-rc.2`（latest 稳定线）
+  - `0.1.6-alpha.2`（alpha 线）
+  以上版本已在本机经 `npx` 实机加载本插件验证可正常运行。
 - **校验方式**：发布前运行 `node scripts/verify-dsh-versions.mjs` 逐个核对已发布版本接口，
   任一不符即非零退出。若 DSH 未来再改接口，脚本先报警，届时再升插件大版本。
+  安装后亦可用 `npm run verify:dsh` 复检当前 DSH 版本是否仍兼容。
 
 如需在旧版 DSH 上运行，请锁定 `@sduwall/dsh-wall-mcp-manager@0.1.0`。
 
@@ -87,7 +93,7 @@ dsh-wall-mcp-manager:
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| `enabled` | `true` | 停用则不挂载该服务（保留配置） |
+| `enabled` | `false` | 是否启动该 MCP；默认不启动，勾选界面「启动」才挂载（保留配置） |
 | `transport` | `stdio` | `stdio`（本地子进程）或 `streamable-http`（远程 HTTP） |
 | `description` | `''` | 备注，仅本界面展示，不传给 mcp-client |
 | `command` | `''` | **stdio 必填**：启动命令 |
