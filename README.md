@@ -12,6 +12,25 @@ DSH（DeepSeek Harness）插件：集中管理 MCP 服务配置，并展示每�
 - **可选服务**：`settings`（运行时改配置并热生效；缺失时按组合层配置工作）、
   `webServer`（设置界面的配置桥；缺失时仍照常挂载 MCP，只是没有界面）
 
+## DSH 版本兼容
+
+本插件 **0.2.0+ 仅支持 DSH ≥ 0.1.2-alpha**（对应 `@deepseek-ai/dsh-settings` ≥ `0.1.2-alpha.2`）。
+
+- **旧版 DSH（≤ 0.1.1-rc.2）不兼容**：该版本线移除/重构了设置面板 API，旧插件一加载即报
+  `does not provide an export named 'installSettingsSection'`。
+- **已验证的版本范围**：`0.1.2-alpha.2` 起全部已发布版本（含 0.1.5-rc.2、0.1.6-alpha.2 等）设置 API 表面一致
+  （均为注入的 `ctx.settings.installSection(owner, ns, schema, entry, hooks)`）。
+- **实机验证通过的版本**（`package.json` 的 `dsh.compatibility.verifiedDshVersions`，以下均为真机加载验证：npx 实装 DSH、实际启动并确认 web 可访问、本插件成功加载且能正常拉起/管理 MCP server）：
+  - `0.1.2-alpha.2`（兼容下限；0.1.2-alpha.3/.4/.5 与其 API 完全一致，已通过静态核对覆盖）
+  - `0.1.5-rc.2`（latest 稳定线）
+  - `0.1.6-alpha.2`（alpha 线）
+  以上版本已在本机经 `npx` 实机加载本插件验证可正常运行。
+- **校验方式**：发布前运行 `node scripts/verify-dsh-versions.mjs` 逐个核对已发布版本接口，
+  任一不符即非零退出。若 DSH 未来再改接口，脚本先报警，届时再升插件大版本。
+  安装后亦可用 `npm run verify:dsh` 复检当前 DSH 版本是否仍兼容。
+
+如需在旧版 DSH 上运行，请锁定 `@sduwall/dsh-wall-mcp-manager@0.1.0`。
+
 ## 它做什么
 
 本插件**自己不实现 MCP 协议**，只做两件事：
@@ -74,7 +93,7 @@ dsh-wall-mcp-manager:
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| `enabled` | `true` | 停用则不挂载该服务（保留配置） |
+| `enabled` | `false` | 是否启动该 MCP；默认不启动，勾选界面「启动」才挂载（保留配置） |
 | `transport` | `stdio` | `stdio`（本地子进程）或 `streamable-http`（远程 HTTP） |
 | `description` | `''` | 备注，仅本界面展示，不传给 mcp-client |
 | `command` | `''` | **stdio 必填**：启动命令 |
@@ -176,11 +195,41 @@ modeled that way"）。若按 union 建模，凭据就会随 `describe` 原文�
 配置分三层解析（后者覆盖前者）：Schema 默认值 → cordis 组合层（`cordis.patch.yml`）→
 `settings.yaml` 用户层。组合层适合部署级默认值，用户层适合随时可能变动的服务与凭据。
 
+## 权限、依赖与安全边界
+
+上架/安装前请先看清本插件的能力边界（便于插件市场与使用者做安全评估）：
+
+| 维度 | 说明 |
+| --- | --- |
+| **运行时依赖** | 仅 `@deepseek-ai/schemastery`（运行时依赖）；Cordis / mcp-client / dsh-settings / dsh-tools 均为 **peer**，由 DSH 运行时提供，插件不自带宿主包。无构建步骤，`lib/client.js` 为已提交的浏览器 bundle。 |
+| **命令执行** | **可拉起本地子进程**——这是 stdio 类型 MCP 的工作方式（按配置执行 `command` + `args`）。命令来源仅限本插件配置，等价于「在宿主上以 DSH 身份执行进程」。出厂 `servers` 为空，安装本身不启动任何子进程。 |
+| **网络访问** | 本插件自身**不主动外联**；`streamable-http` 类型 MCP 会按配置连接用户填写的远程地址。配置桥仅监听**本机回环**（`127.0.0.1` / `::1`），拒绝非回环来源，避免 DSH 绑定 `0.0.0.0` 时把写接口暴露到网段。 |
+| **文件访问** | 不读写用户文件系统；仅在宿主内存与 DSH settings 存储之间读写**自己的命名空间配置**。stdio MCP 子进程的文件权限继承 DSH 进程，由对应 MCP 自行决定。 |
+| **凭据处理** | `secretEnv` / `secretHeaders` 标记为 `role('secret')`，`describe` 走 `redactSecrets`，**凭据原文与键名永不出网**，界面只显示「已配置 / 未配置」；写入为只写字段，留空表示不修改。 |
+| **系统/Profile 兼容** | Node.js ≥ 20（DSH 内置 ≥ 22）；DSH ≥ `0.1.2-alpha.2`（真机验证见 `package.json` 的 `dsh.compatibility.verifiedDshVersions`）。跨平台纯 JS，无原生模块。 |
+| **生命周期脚本** | 包**不携带** `preinstall` / `install` / `postinstall` / `prepare` 脚本，安装期不执行任意代码。 |
+| **许可证** | MIT。 |
+
 ## 安装
+
+**从 npm 安装（发布后推荐）：**
 
 ```bash
 dsh plugin --profile <profile> add @sduwall/dsh-wall-mcp-manager
 ```
+
+**从 GitHub 安装（npm 未发布或想跟踪某个提交时；`dsh plugin` 转发给 pnpm，支持 git 源）：**
+
+```bash
+# 默认分支
+dsh plugin --profile <profile> add github:sduwall/dsh-wall-mcp-manager
+
+# 钉到某个 commit / tag / 分支（更可复现，便于审计）
+dsh plugin --profile <profile> add github:sduwall/dsh-wall-mcp-manager#v0.2.0
+```
+
+> 本包不含 `prepare` / `install` 等生命周期脚本，且浏览器 bundle `lib/client.js` 已直接提交，
+> 因此 git 源安装无需构建步骤。
 
 本地源码目录安装亦可：`dsh plugin --profile <profile> add ./dsh-wall-mcp-manager`。
 
@@ -259,7 +308,10 @@ npm pack --dry-run                                   # 核对 tarball 文件清�
 npm publish                                          # publishConfig.access=public，scoped 包才不会被当作私有包
 ```
 
-`prepublishOnly` 会在发布前自动跑一遍 `npm test`，测试不通过则中止发布。
+`prepublishOnly` 会在发布前依次运行单元测试（`npm test`）与 DSH 版本兼容性校验
+（`npm run verify:dsh`，需联网访问 registry.npmjs.org / unpkg.com），任一不通过即中止发布。
+推送代码到 GitHub 时则由 Actions CI（`.github/workflows/ci.yml`）在 Node 20/22 ×
+ubuntu/windows 上自动跑同样的检查。
 
 注意包内不带 scope 的三处标识是有意为之，改动会破坏兼容：settings 命名空间
 `dsh-wall-mcp-manager`（只允许小写 kebab-case）、`cordis.patch.yml` 的 `id`、

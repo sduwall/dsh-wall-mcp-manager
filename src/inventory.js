@@ -143,8 +143,10 @@ export function planServers(servers) {
   const skipped = []
   if (!isRecord(servers)) return { desired, skipped }
   for (const [serverName, server] of Object.entries(servers)) {
-    if (isRecord(server) && server.enabled === false) {
-      skipped.push({ name: serverName, reason: '已停用' })
+    // 仅 enabled 显式为 true 才挂载；其余（缺省 / 显式 false）一律不启动。
+    // 默认 false 即 opt-in 启动：安装本插件、新增服务都不会自动拉起任何 MCP。
+    if (isRecord(server) && server.enabled !== true) {
+      skipped.push({ name: serverName, reason: '未启动' })
       continue
     }
     const verdict = validateServer(serverName, server)

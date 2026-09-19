@@ -10,3 +10,4 @@ Thumbs.db
 coverage/
 .env
 .env.local
+.workbuddy/

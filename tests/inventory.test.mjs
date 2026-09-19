@@ -114,24 +114,25 @@ test('toMcpConfig 丢掉非字符串的 env / headers / args 元素', () => {
   assert.deepEqual(config.env, { OK: 'v' })
 })
 
-test('planServers 跳过停用与半成品，并给出可展示的原因', () => {
+test('planServers 默认不启动：仅 enabled:true 的服务进入挂载', () => {
   const { desired, skipped } = planServers({
-    good: { command: 'npx', args: ['-y'] },
+    good: { enabled: true, command: 'npx', args: ['-y'] },
     off: { enabled: false, command: 'npx' },
+    silent: { command: 'npx' }, // 无 enabled 字段 → 默认不启动
     half: { transport: 'stdio', command: '' },
     'bad name': { command: 'npx' },
   })
   assert.deepEqual([...desired.keys()], ['good'])
   assert.deepEqual(
     skipped.map((item) => item.name),
-    ['off', 'half', 'bad name'],
+    ['off', 'silent', 'half', 'bad name'],
   )
-  assert.equal(skipped[0].reason, '已停用')
-  assert.match(skipped[1].reason, /command/)
+  // 未显式 enabled:true 的全部不启动，且不进入校验（opt-in：勾选「启动」才校验并挂载）
+  for (const item of skipped) assert.equal(item.reason, '未启动')
 })
 
 test('planServers 的指纹只随 mcp-client 配置变化，与 description 无关', () => {
-  const base = { command: 'npx', args: ['-y'], description: '原描述' }
+  const base = { enabled: true, command: 'npx', args: ['-y'], description: '原描述' }
   const before = planServers({ fs: base }).desired.get('fs').key
   const sameConfig = planServers({ fs: { ...base, description: '改了描述' } }).desired.get('fs').key
   const changed = planServers({ fs: { ...base, args: ['-y', '--ro'] } }).desired.get('fs').key
