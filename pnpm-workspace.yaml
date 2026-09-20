@@ -1,0 +1,12 @@
+# pnpm 11 起，配置不再从 package.json 的 "pnpm" 字段读取，统一放在本文件。
+# 单包项目可省略 packages 字段——按官方文档，省略时只把根包纳入 workspace。
+overrides:
+  # @deepseek-ai/dsh-invariants 从未发布过稳定版 0.1.2（只发预发布：0.1.2-rc.1 / 0.1.5-rc.2 / 0.1.6-alpha.2 …）。
+  # 依赖图在解析到较新的 @deepseek-ai 发行线（0.1.2 / 0.1.5 / 0.1.6，即“改了 API”的那条线）时，
+  # 对 dsh-invariants 的有效需求会被 pnpm 归一化为 ">=0.1.2 <0.2.0-0"（即 ^0.1.2 的归一化形式）；
+  # 按 semver 预发布规则，该范围排除所有预发布版 → 无版本可满足 → 解析必然失败（ERR_PNPM_NO_MATCHING_VERSION）。
+  # 重要：已对全量 @deepseek-ai 包（含 dsh-client-*）核验，没有任何包的 manifest 直接写 "dsh-invariants": "^0.1.2"，
+  # 该范围是 pnpm 在依赖图交汇后算出的“需要一条稳定的 0.1.2 线”的归一化结果，而非某条具体声明。
+  # 这里钉到 0.1.2-rc.1 —— 它正是上述“改了 API 的 0.1.2 线”的预发布版本，与 devDependencies 选定的 dsh-settings 同线，
+  # 从而让整棵 @deepseek-ai 依赖树收敛到 0.1.2-rc.1 这一致版本（install / 55 测试 / verify:dsh 均通过）。
+  '@deepseek-ai/dsh-invariants': 0.1.2-rc.1
