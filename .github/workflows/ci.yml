@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ['20', '22']
+        node: ['22', '24']
         os: [ubuntu-latest, windows-latest]
     steps:
       - name: Checkout
@@ -23,7 +23,9 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          # 锁文件为 lockfileVersion 9.0，pnpm 9/10/11 均兼容；选用 pnpm 11（要求 Node >= 22）与本地 Node 24 对齐。
+          # Node 22 作为 pnpm 11 的最低支持版本保留，兼做下限校验。
+          version: 11
 
       - name: Setup Node.js ${{ matrix.node }}
         uses: actions/setup-node@v4
@@ -48,12 +50,12 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 11
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: pnpm
 
       - name: Install dependencies
