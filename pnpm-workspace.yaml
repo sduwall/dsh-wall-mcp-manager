@@ -1,5 +1,12 @@
-# pnpm 11 起，配置不再从 package.json 的 "pnpm" 字段读取，统一放在本文件。
-# 单包项目可省略 packages 字段——按官方文档，省略时只把根包纳入 workspace。
+# pnpm 10 起，pnpm 配置（含 overrides）统一从本文件读取；pnpm 11 起彻底不再读 package.json 的 "pnpm" 字段。
+# 因此 overrides 必须放在本文件，而不能放在 package.json 的 "pnpm" 字段（后者在 pnpm 11 会被忽略并告警）。
+#
+# packages：pnpm < 10.5.0（含 pnpm 9）要求该字段必须存在，否则报
+# "ERROR packages field missing or empty"（ERR_PNPM_INVALID_WORKSPACE_CONFIGURATION）；
+# pnpm ≥ 10.5 起可省略（省略时只含根包）。本仓库为单包仓库，显式声明根包。
+packages:
+  - '.'
+
 overrides:
   # @deepseek-ai/dsh-invariants 从未发布过稳定版 0.1.2（只发预发布：0.1.2-rc.1 / 0.1.5-rc.2 / 0.1.6-alpha.2 …）。
   # 依赖图在解析到较新的 @deepseek-ai 发行线（0.1.2 / 0.1.5 / 0.1.6，即“改了 API”的那条线）时，
